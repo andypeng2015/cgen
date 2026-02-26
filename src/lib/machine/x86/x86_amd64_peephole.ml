@@ -385,6 +385,7 @@ let collect_mov_op fn =
           :: xs when combinable_binop op
                   && Rv.(r1 = r3')
                   && Rv.(r2 = r3)
+                  && Rv.(r3 <> r3')
                   && not (Set.mem (rset [o1]) r1)
                   && not (rset_mem' o2 [r1; r2]) ->
           let i = Two (op, Oreg (r3, r3t), o1) in
@@ -393,6 +394,7 @@ let collect_mov_op fn =
           :: (l, Two (op, Oreg (r1', r1t), Oreg (r2', _)))
           :: xs when combinable_binop op
                   && Rv.(r1 = r2')
+                  && Rv.(r1' <> r2')
                   && not (Set.mem (rset [o]) r1) ->
           let i = Two (op, Oreg (r1', r1t), o) in
           go (Ltree.set acc ~key:l ~data:i) xs

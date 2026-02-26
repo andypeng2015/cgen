@@ -1494,6 +1494,20 @@ end = struct
       I.shl (Oreg (x, xt)) (Oreg (rcx, `i8));
     ]
 
+  let lsl_ir_x_y_z env =
+    let*! x, xt = S.regvar env "x" in
+    let*! y, yt = S.imm env "y" in
+    let*! z, _ = S.regvar env "z" in
+    let y = Bv.to_int64 y in
+    let xt', yt' = match xt with
+      | `i64 when fits_int32 y -> `i32, `i32
+      | _ -> xt, yt in
+    let rcx = Rv.reg `rcx in !!![
+      I.mov (Oreg (x, xt')) (Oimm (y, yt'));
+      I.mov (Oreg (rcx, `i8)) (Oreg (z, `i8));
+      I.shl (Oreg (x, xt)) (Oreg (rcx, `i8));
+    ]
+
   (* The shift value is ANDed with 0x3F or 0x1F by the hardware. *)
   let lsl_ri_x_y_z env =
     let*! x, xt = S.regvar env "x" in
@@ -2124,6 +2138,7 @@ end = struct
 
     let lsl_ = [
       lsl_rr_x_y_z;
+      lsl_ir_x_y_z;
       lsl_ri_x_y_z;
     ]
 

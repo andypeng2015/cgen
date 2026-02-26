@@ -2,6 +2,14 @@ open Core
 open OUnit2
 open Cgen
 
+(* If this input started out as Structured IR, try looking for
+   the output of destructuring it to Virtual IR. *)
+let vir_or_sir name =
+  let filename = Format.sprintf "data/opt/%s.vir" name in
+  match Sys_unix.file_exists filename with
+  | `Yes -> filename
+  | _ -> Format.sprintf "data/opt/%s.sir.vir" name
+
 let compare_outputs ?(chop_end = true) expected_file actual =
   Golden.compare_or_update ()
     ~chop_end
@@ -58,7 +66,7 @@ let test_destructure name _ =
   | Error err -> assert_failure @@ Format.asprintf "%a" Error.pp err
 
 let test_restructure ?(opt = false) name _ =
-  let filename = Format.sprintf "data/opt/%s.vir" name in
+  let filename = vir_or_sir name in
   let filename' = Format.sprintf "%s%s.sir" filename
       (if opt then ".opt" else "") in
   Context.init Machine.X86.Amd64_sysv.target |>
@@ -76,7 +84,7 @@ let test_restructure ?(opt = false) name _ =
   | Error err -> assert_failure @@ Format.asprintf "%a" Error.pp err
 
 let test_abi target ext name _ =
-  let filename = Format.sprintf "data/opt/%s.vir" name in
+  let filename = vir_or_sir name in
   let filename' = Format.sprintf "%s.opt.%s" filename ext in
   Context.init target |>
   Context.eval begin
@@ -88,7 +96,7 @@ let test_abi target ext name _ =
   | Error err -> assert_failure @@ Format.asprintf "%a" Error.pp err
 
 let test_isel target abi ext name _ =
-  let filename = Format.sprintf "data/opt/%s.vir" name in
+  let filename = vir_or_sir name in
   let filename' = Format.sprintf "%s.opt.%s.%s" filename abi ext in
   Context.init target |>
   Context.eval begin
@@ -104,7 +112,7 @@ let test_isel target abi ext name _ =
   | Error err -> assert_failure @@ Format.asprintf "%a" Error.pp err
 
 let test_regalloc target abi ext name _ =
-  let filename = Format.sprintf "data/opt/%s.vir" name in
+  let filename = vir_or_sir name in
   let filename' = Format.sprintf "%s.opt.%s.%s.regalloc" filename abi ext in
   Context.init target |>
   Context.eval begin
@@ -141,7 +149,7 @@ let output_asm m file =
   Out_channel.close oc
 
 let test_native target abi ext name _ =
-  let filename = Format.sprintf "data/opt/%s.vir" name in
+  let filename = vir_or_sir name in
   let driver = Format.sprintf "data/opt/%s.driver.%s.%s" name abi ext in
   let driver_c = driver ^ ".c" in
   let driver_output = driver ^ ".output" in
@@ -190,6 +198,7 @@ let destructure_suite = "Test destructure" >::: [
     "Switch 1" >:: test_destructure "switch1";
     "Goto 1" >:: test_destructure "goto1";
     "GCD" >:: test_destructure "gcd";
+    "strspn" >:: test_destructure "strspn";
   ]
 
 let to_restructure = [
@@ -445,6 +454,7 @@ let regalloc_suite = "Test register allocation" >::: [
     "Struct in a block argument (SysV AMD64)" >:: test_sysv_amd64_regalloc "sumphi";
     "Variadic sum (SysV AMD64)" >:: test_sysv_amd64_regalloc "vasum";
     "Binary search (SysV AMD64)" >:: test_sysv_amd64_regalloc "bsearch";
+    "strspn (SysV AMD64)" >:: test_sysv_amd64_regalloc "strspn";
   ]
 
 let native_suite = "Test native code" >::: [
@@ -477,6 +487,7 @@ let native_suite = "Test native code" >::: [
     "Binary search (SysV AMD64)" >:: test_sysv_amd64_native "bsearch";
     "Naiive even-odd test (SysV AMD64)" >:: test_sysv_amd64_native "evenodd";
     "Edge contraction and select (SysV AMD64)" >:: test_sysv_amd64_native "contractsel";
+    "strspn (SysV AMD64)" >:: test_sysv_amd64_native "strspn";
   ]
 
 let () = run_test_tt_main @@ test_list [
