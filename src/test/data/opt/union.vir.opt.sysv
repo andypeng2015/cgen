@@ -1,0 +1,26 @@
+module union
+
+export function $getint(l %1/rdi) {
+  %15 = slot 8, align 8
+@2:
+  st.l %1, %15 ; @13
+  %10 = ld.w %15 ; @4
+  ret rax/%10
+}
+
+export function $mkfloat(s %4/xmm0) {
+  %3 = slot 8, align 8
+@5:
+  st.s %4, %3 ; @6
+  %22 = ld.l %3 ; @16
+  ret rax/%22
+}
+
+export function $struct_with_union(l %7/rdi) {
+  %6 = slot 8, align 8
+@8:
+  st.l %7, %6 ; @19
+  %14 = add.l %6, 0x4_l ; @12
+  %13 = ld.w %14 ; @11
+  ret rax/%13
+}

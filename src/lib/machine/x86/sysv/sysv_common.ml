@@ -78,37 +78,68 @@ type acls = {
   cls   : cls;
 }
 
-let classify_layout lt =
+let cls_start = Rnone, Rnone
+
+let rec classify_member ~gamma (r1, r2) ds =
+  Seq.fold_until ds
+    ~init:(r1, r2, 0)
+    ~finish:(fun (r1, r2, _) -> Some (r1, r2))
+    ~f:(fun (r1, r2, s) -> function
+        | #Type.imm as m ->
+          let s' = s + (Type.sizeof_imm m / 8) in
+          begin match s / 8 with
+            | 0 -> Continue (Rint, r2, s')
+            | 1 -> Continue (r1, Rint, s')
+            | _ -> assert false
+          end
+        | #Type.fp as f ->
+          let s' = s + (Type.sizeof_fp f / 8) in
+          begin match s / 8 with
+            | 0 -> Continue (merge_reg r1 Rsse, r2, s')
+            | 1 -> Continue (r1, merge_reg r2 Rsse, s')
+            | _ -> assert false
+          end
+        | `pad n -> Continue (r1, r2, s + n)
+        | `opaque _ -> Stop None
+        | `union (name, n) ->
+          match classify_union ~gamma (gamma name) with
+          | None -> Stop None
+          | Some (ur1, ur2) ->
+            let r1 = match s / 8 with
+              | 0 -> merge_reg r1 ur1
+              | 1 -> r1
+              | _ -> assert false in
+            let r2 = match (s + n - 1) / 8 with
+              | 0 -> r2
+              | 1 -> merge_reg r2 ur2
+              | _ -> assert false in
+            Continue (r1, r2, s + n))
+
+and classify_union ~gamma dss =
+  Seq.fold dss ~init:(Some cls_start) ~f:(fun acc ds ->
+      Option.bind acc ~f:(fun (r1, r2) ->
+          classify_member ~gamma cls_start ds |>
+          Option.bind ~f:(fun (r1', r2') ->
+              Some (merge_reg r1 r1', merge_reg r2 r2'))))
+
+let classify_layout ~gamma lt =
   let size = Type.Layout.sizeof lt in
   (* Align to the nearest eightbyte boundary. *)
   let align = max 8 @@ Type.Layout.align lt in
   let size = (size + align - 1) land -align in
   let cls =
-    (* Try to pack the struct into two registers. If it is
-       larger than 16 bytes or contains unaligned fields
-       then it will be passed on the stack. Note that an
-       empty struct is also passed in memory. *)
     if size > 0 && size <= 16 then
-      Type.Layout.data lt |> Seq.fold_until
-        ~init:(Rnone, Rnone, 0)
-        ~finish:(fun (r1, r2, _) -> Kreg (r1, r2))
-        ~f:(fun (r1, r2, s) -> function
-            | #Type.imm as m ->
-              let s' = s + (Type.sizeof_imm m / 8) in
-              begin match s / 8 with
-                | 0 -> Continue (Rint, r2, s')
-                | 1 -> Continue (r1, Rint, s')
-                | _ -> assert false
-              end
-            | #Type.fp as f ->
-              let s' = s + (Type.sizeof_fp f / 8) in
-              begin match s / 8 with
-                | 0 -> Continue (merge_reg r1 Rsse, r2, s')
-                | 1 -> Continue (r1, merge_reg r2 Rsse, s')
-                | _ -> assert false
-              end
-            | `pad n -> Continue (r1, r2, s + n)
-            | `opaque _ -> Stop Kmem)
+      match Type.Layout.members lt with
+      | First ds ->
+        begin match classify_member ~gamma cls_start ds with
+          | Some (r1, r2) -> Kreg (r1, r2)
+          | None -> Kmem
+        end
+      | Second dss ->
+        begin match classify_union ~gamma dss with
+          | Some (r1, r2) -> Kreg (r1, r2)
+          | None -> Kmem
+        end
     else Kmem in
   {size; align; cls}
 
@@ -232,11 +263,18 @@ module Make0(Context : Context_intf.S) = struct
       failwithf "%a has no ref in function $%s"
         Var.pps x (Func.name env.fn) ()
 
+  let resolve_union env name =
+    match Typecheck.Env.layout name env.tenv with
+    | Error _ -> Seq.empty
+    | Ok lt -> match Type.Layout.members lt with
+      | Second dss -> dss
+      | First _ -> Seq.empty
+
   let type_cls env s = match Hashtbl.find env.layout s with
     | Some k -> !!k
     | None ->
       let+? lt = Typecheck.Env.layout s env.tenv in
-      let k = classify_layout lt in
+      let k = classify_layout ~gamma:(resolve_union env) lt in
       Hashtbl.set env.layout ~key:s ~data:k;
       k
 

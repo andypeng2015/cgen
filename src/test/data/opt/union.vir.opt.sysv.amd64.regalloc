@@ -1,0 +1,28 @@
+module union
+
+export function $getint { ; returns: rax
+@2:
+  sub rsp, 0x8_l ; @31
+  mov qword ptr [rsp], rdi ; @24
+  mov eax, dword ptr [rsp] ; @4
+  add rsp, 0x8_l ; @32
+  ret ; @23
+}
+
+export function $mkfloat { ; returns: rax
+@5:
+  sub rsp, 0x8_l ; @33
+  movss dword ptr [rsp], xmm0 ; @27
+  mov rax, qword ptr [rsp] ; @16
+  add rsp, 0x8_l ; @34
+  ret ; @26
+}
+
+export function $struct_with_union { ; returns: rax
+@8:
+  sub rsp, 0x8_l ; @35
+  mov qword ptr [rsp], rdi ; @30
+  mov eax, dword ptr [rsp + 0x4] ; @11
+  add rsp, 0x8_l ; @36
+  ret ; @29
+}

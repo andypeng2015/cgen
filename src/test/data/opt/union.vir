@@ -1,0 +1,36 @@
+module union
+
+type :u = union {
+  s,
+  w
+}
+
+type :s = {
+  :u,
+  w
+}
+
+export function w $getint(:u %x) {
+  %tmp = slot 4, align 4
+@start:
+  st:u %x, %tmp
+  %r = ld.w %tmp
+  ret %r
+}
+
+export function :u $mkfloat(s %f) {
+  %tmp = slot 4, align 4
+@start:
+  st.s %f, %tmp
+  %r = ld:u %tmp
+  ret %r
+}
+
+export function w $struct_with_union(:s %x) {
+  %tmp = slot 8, align 4
+@start:
+  st:s %x, %tmp
+  %p = add.l %tmp, 4_l
+  %r = ld.w %p
+  ret %r
+}
