@@ -16,16 +16,29 @@ module Solution : sig
 end
 
 (** [run (module G) ?rev ?step ?edge ~start ~init ~equal ~merge ~f g]
-    computes a dataflow fixpoint over [g], starting from the [start] node.
+    computes a dataflow fixpoint over [g], starting from the [start] node,
+    with the initial approximation of the solution [init].
 
-    [~rev:true] reverses the graph direction, useful for backward analyses
-    such as liveness. Defaults to [false].
+    [equal] defines the equality relation of the abstract domain being
+    computed. This relation is important for ensuring termination of the
+    analysis (i.e. the analysis terminates when no new changes are added
+    to the system of dataflow equations).
 
-    [~step] is an optional per-node hook called as
+    [merge] defines the "join" or "meet" relation over the abstract domain.
+    It is used to combine predecessor states with successor states, thus
+    propagating information across the graph.
+
+    [f] is the "transfer" function for a node in the graph: given an incoming
+    state, a new state is returned.
+
+    If [rev = true], the graph direction is reversed. This is useful for
+    backward analyses such as liveness. Defaults to [false].
+
+    [step] is an optional per-node hook called as
     [step visit_count node old_val new_val]; used for widening.
 
-    [~edge] is an optional per-edge hook called as
-    [edge src dst val] before merging into the successor; used for
+    [edge] is an optional per-edge hook called as
+    [edge src dst value] before merging into [dst]; used for
     path-sensitive narrowing.
 
     @raise Invalid_argument if [start] is not a node in [g].
