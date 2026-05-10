@@ -64,7 +64,8 @@ module Tree : sig
   (** Immediate children of a node, in reverse postorder. *)
   val children : t -> Label.t -> Label.t seq
 
-  (** All descendants of a node in preorder. *)
+  (** All strict descendants of a node in preorder (excludes the node
+      itself). *)
   val descendants : t -> Label.t -> Label.t seq
 
   (** All ancestors of a node, in ascending order. *)
@@ -85,7 +86,8 @@ module Tree : sig
       the root. *)
   val postorder : t -> Label.t seq
 
-  (** Equivalent to [descendants t (root t)]. *)
+  (** Returns a preorder traversal of the tree, starting from
+      the root. *)
   val preorder : t -> Label.t seq
 
   (** Returns the lowest common ancestor (LCA) of two nodes

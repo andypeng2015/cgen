@@ -52,11 +52,14 @@ module Tree = struct
 
   let descendants t n =
     let open Seq.Generator in
-    let rec gen u =
-      yield u >>= fun () ->
-      children t u |> Seq.fold ~init:(return ())
-        ~f:(fun acc c -> acc >>= fun () -> gen c) in
-    run @@ gen n
+    let rec walk u =
+      children t u |> Seq.fold
+        ~init:(return ())
+        ~f:(fun acc c ->
+            acc >>= fun () ->
+            yield c >>= fun () ->
+            walk c) in
+    run @@ walk n
 
   let postorder t =
     let open Seq.Generator in
@@ -67,7 +70,7 @@ module Tree = struct
       walk @@ children t u in
     run @@ gen t.root
 
-  let preorder t = descendants t t.root
+  let preorder t = Seq.shift_right (descendants t t.root) t.root
 
   let ancestors t n =
     let open Seq.Generator in
