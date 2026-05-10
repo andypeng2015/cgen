@@ -16,8 +16,8 @@ let can_merge env l l' =
   Cfg.Node.degree ~dir:`In l' env.cfg = 1
 
 let candidate subst env b l =
-  Cfg.Node.succs l env.cfg |> Seq.next |> function
-  | Some (l', rest) when Seq.is_empty rest && can_merge env l l' ->
+  Cfg.Node.succs l env.cfg |> take_seq_singleton |> function
+  | Some l' when can_merge env l l' ->
     let* b' = LT.find env.blks l' in
     let+ subst = Subst_mapper.blk_extend subst b b' in
     subst, l', b'

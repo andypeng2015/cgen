@@ -88,3 +88,8 @@ let sw_hoist_default changed t i d tbl =
     let len = Ctrl.Table.length tbl in
     if len' < len then changed := true;
     `sw (t, i, d, tbl')
+
+let take_seq_singleton s =
+  Seq.take s 2 |> Seq.to_list |> function
+  | [x] -> Some x
+  | _ -> None

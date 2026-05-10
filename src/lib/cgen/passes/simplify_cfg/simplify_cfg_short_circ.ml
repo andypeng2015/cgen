@@ -21,8 +21,8 @@ open O.Syntax
 
 let is_empty b = not (Blk.has_any_insns b)
 
-let cmp_true b = match Seq.next @@ Blk.insns b with
-  | Some (i, is) when Seq.is_empty is ->
+let cmp_true b = match take_seq_singleton @@ Blk.insns b with
+  | Some i ->
     begin match Insn.op i with
       (* Not equal to zero. *)
       | `bop (k, `ne _, `var v, `int (n, _))
@@ -36,8 +36,8 @@ let cmp_true b = match Seq.next @@ Blk.insns b with
     end
   | _ -> None
 
-let cmp_false b = match Seq.next @@ Blk.insns b with
-  | Some (i, is) when Seq.is_empty is ->
+let cmp_false b = match take_seq_singleton @@ Blk.insns b with
+  | Some i ->
     begin match Insn.op i with
       (* Not equal to one. *)
       | `bop (k, `ne _, `var v, `int (n, _))

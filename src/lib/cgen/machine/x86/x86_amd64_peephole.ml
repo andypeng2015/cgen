@@ -27,6 +27,11 @@ let filter_not_in changed fn t =
             not @@ Lset.mem t @@ Insn.label i) |>
         Seq.to_list |> Blk.with_insns b)
 
+let take_seq_singleton s =
+  Seq.take s 2 |> Seq.to_list |> function
+  | [x] -> Some x
+  | _ -> None
+
 (* Blocks that consist of a single instruction of the form:
 
    @label:
@@ -37,10 +42,9 @@ let collect_singles fn =
   Func.fold_blks fn ~init:Ltree.empty ~f:(fun acc b ->
       let key = Blk.label b in
       if Label.(key = start) then acc else
-        let is = Seq.map ~f:Insn.insn @@ Blk.insns b in
-        match Seq.next is with
-        | Some (JMP (Jlbl dst), rest) when Seq.is_empty rest ->
-          Ltree.set acc ~key ~data:dst
+        Blk.insns b |> Seq.map ~f:Insn.insn |>
+        take_seq_singleton |> function
+        | Some JMP Jlbl dst -> Ltree.set acc ~key ~data:dst
         | _ -> acc)
 
 (* Union-find with path compression. *)

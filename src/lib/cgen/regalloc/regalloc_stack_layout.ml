@@ -5,6 +5,11 @@ open Cgen_containers
 
 module Slot = Virtual.Slot
 
+let take_seq_singleton s =
+  Seq.take s 2 |> Seq.to_list |> function
+  | [x] -> Some x
+  | _ -> None
+
 module Make(M : Machine_intf.S)(C : Context_intf.S) = struct
   open C.Syntax
 
@@ -129,8 +134,8 @@ module Make(M : Machine_intf.S)(C : Context_intf.S) = struct
             (* XXX: the last instruction is assumed to be the "return",
                if the only successor is pseudoexit. This could fall
                apart on more sophisticated exit sequences. *)
-            let last = match Cfg.Node.succs (Blk.label b) cfg |> Seq.next with
-              | Some (l, rest) when Seq.is_empty rest && Label.(l = pseudoexit) ->
+            let last = match take_seq_singleton @@ Cfg.Node.succs (Blk.label b) cfg with
+              | Some l when Label.(l = pseudoexit) ->
                 Blk.insns b ~rev:true |>
                 Seq.filter ~f:(fun i -> not @@ M.Insn.is_pseudo @@ Insn.insn i) |>
                 Seq.map ~f:Insn.label |> Seq.hd
